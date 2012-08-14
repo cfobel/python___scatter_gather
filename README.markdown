@@ -1,11 +1,11 @@
 Scatter
 -------
 
-Given a 1D array of values, which we'll call "data", and an ordered set
-of k-sized arrays (which we'll call "scatter\_lists") of indices into
-"data", generate an ordered set of arrays, where each array corresponds
-to the "data" values for a particular list of indices from
-"scatter\_lists".
+Given a 1D array of values, which we'll call `data`, and an ordered set
+of k-sized arrays (which we'll call `scatter_lists`) of indices into
+`data`, generate an ordered set of arrays, where each array corresponds
+to the `data` values for a particular list of indices from
+`scatter_lists`.
 
 For example (note that here k=2, i.e., the scatter lists are of size 2):
 
