@@ -3,6 +3,7 @@ from __future__ import division
 import numpy as np
 
 from ..scatter_gather import k_scatter, k_gather
+from ..scatter_gather.cuda import scatter_gather
 
 
 def test_k_scatter_gather():
@@ -17,3 +18,8 @@ def test_k_scatter_gather():
     gathered_data = k_gather(scattered_data)
     
     assert((gathered_data == a1).all())
+
+
+def test_k_scatter_cuda():
+    data = np.arange(12, dtype=np.int32)
+    scatter_gather(data, thread_count=16)
