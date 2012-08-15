@@ -21,5 +21,5 @@ def test_k_scatter_gather():
 
 
 def test_k_scatter_cuda():
-    data = np.arange(12, dtype=np.int32)
+    data = np.arange(12, dtype=np.int32)[::-1].copy()
     scatter_gather(data, thread_count=16)

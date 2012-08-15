@@ -57,23 +57,32 @@ def scatter_gather(in_data, dtype=None, thread_count=None):
         raise
 
     data = np.array(in_data, dtype=dtype)
+    data_count = np.int32(len(data))
 
-    shared = len(data) * dtype.itemsize
+    #shared = data_count * dtype.itemsize
+    #shared = 0
 
     default_thread_count = log2ceil(test.get_attribute(
             cuda.function_attribute.MAX_THREADS_PER_BLOCK))
 
     if thread_count is None:
-        thread_count = min(len(data), 1 << default_thread_count)
+        thread_count = min(data_count, 1 << default_thread_count)
     print 'thread_count: %d' % thread_count
 
-    block_count = max(1, log2ceil(len(data) / thread_count))
+    block_count = max(1, log2ceil(data_count / thread_count))
     print 'block_count: %d' % block_count
     
     block = (thread_count, 1, 1)
     grid = (block_count, 1, 1)
 
-    test(np.int32(len(data)), cuda.InOut(data),
-            block=block, grid=grid, shared=shared)
+    k = np.int32(2)
+    #scatter_lists = np.zeros(k * thread_count, dtype=np.int32)
+    scatter_lists = np.concatenate([(i, i + 1) for i in range(data_count)]).astype(np.int32)
+    scatter_lists[-1] -= 1
+    print len(scatter_lists), scatter_lists
+    scatter_count = np.int32(thread_count)
+
+    test(data_count, k, cuda.InOut(data), scatter_count, cuda.InOut(scatter_lists),
+            block=block, grid=grid)
 
     return data
