@@ -54,9 +54,11 @@ namespace scatter_gather {
     __device__ void k_scatter(int k, int data_count, volatile T *data,
             int scatter_count, int32_t *scatter_lists, volatile T *block_data,
                     T empty_value) {
+#ifdef DEBUG_SCATTER_GATHER
         if(threadIdx.x == 0 && blockIdx.x == 0) {
             printf("k_scatter(k=%d, scatter_count=%d)\n", k, scatter_count);
         }
+#endif
         int passes = ceil((float)scatter_count / blockDim.x);
         for(int j = 0; j < passes; j++) {
             int i = j * blockDim.x + threadIdx.x;
@@ -69,11 +71,13 @@ namespace scatter_gather {
                         T value = data[index];
                         block_data[threadIdx.x * k + scatter_index] = value;
 
+#ifdef DEBUG_SCATTER_GATHER
                         printf("{'block_id': %d, 'thread_id': %d, 'pass': %d, 'element_id': %d, 'value': %d}\n",
                                 blockIdx.x, threadIdx.x, j, i, value);
                         if(index >= data_count) {
                             printf("Out of bounds: %d/%d\n", index, data_count);
                         }
+#endif
                     }
                 }
             }
@@ -90,6 +94,27 @@ namespace scatter_gather {
     __device__ void k_scatter(int k, int data_count, volatile T *data,
             int scatter_count, int32_t *scatter_lists, volatile T *block_data) {
         k_scatter<T, empty_index>(k, data_count, data, scatter_count, scatter_lists, block_data, 0);
+    }
+
+
+    template <class T>
+    __device__ void k_gather(int k, int scatter_count,
+            volatile T *block_data, volatile T *gathered_data) {
+#ifdef DEBUG_SCATTER_GATHER
+        if(threadIdx.x == 0 && blockIdx.x == 0) {
+            printf("k_gather(k=%d, scatter_count=%d)\n", k, scatter_count);
+        }
+#endif
+        int passes = ceil((float)scatter_count / blockDim.x);
+        for(int j = 0; j < passes; j++) {
+            int i = j * blockDim.x + threadIdx.x;
+            if(i < scatter_count) {
+                for(int scatter_index = 0; scatter_index < k; scatter_index++) {
+                    T value = block_data[threadIdx.x * k + scatter_index];
+                    gathered_data[i * k + scatter_index] = value;
+                }
+            }
+        }
     }
 }
 

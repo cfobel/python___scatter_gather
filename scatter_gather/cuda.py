@@ -7,6 +7,8 @@ import pycuda.autoinit
 import pycuda.driver as cuda
 from pycuda.compiler import SourceModule
 
+from scatter_gather import k_scatter, k_gather
+
 
 def package_root():
     '''
@@ -38,7 +40,7 @@ def log2ceil(x):
     return int(np.ceil(np.log2(x)))
 
 
-def scatter_gather(in_data, dtype=None, thread_count=None):
+def scatter_gather(in_data, scatter_lists, dtype=None, thread_count=None):
     code_template = jinja_env.get_template('scatter_gather.cu')
     mod = SourceModule(code_template.render(), no_extern_c=True,
             options=['-I%s' % get_include_root()], keep=True)
@@ -67,22 +69,21 @@ def scatter_gather(in_data, dtype=None, thread_count=None):
 
     if thread_count is None:
         thread_count = min(data_count, 1 << default_thread_count)
-    print 'thread_count: %d' % thread_count
 
     block_count = max(1, log2ceil(data_count / thread_count))
+    print 'thread_count: %d' % thread_count
     print 'block_count: %d' % block_count
     
     block = (thread_count, 1, 1)
     grid = (block_count, 1, 1)
 
-    k = np.int32(2)
-    scatter_lists = np.concatenate([(i, data_count - 1 - i) for i in range(data_count)]).astype(np.int32)
-    scatter_lists[-1] = -1
-    scatter_lists[0] = -1
-    print len(scatter_lists), scatter_lists
-    scatter_count = np.int32(scatter_lists.size // k)
+    k = np.int32(len(scatter_lists[0]))
+    scatter_count = np.int32(len(scatter_lists))
+    scatter_lists = np.concatenate(scatter_lists).astype(np.int32)
+    gathered_data = np.empty_like(scatter_lists).astype(dtype)
 
     test(k, data_count, cuda.InOut(data), scatter_count, cuda.InOut(scatter_lists),
+            cuda.Out(gathered_data),
             block=block, grid=grid, shared=int(scatter_count * k))
 
-    return data
+    return gathered_data
