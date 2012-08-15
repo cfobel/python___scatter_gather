@@ -76,13 +76,13 @@ def scatter_gather(in_data, dtype=None, thread_count=None):
     grid = (block_count, 1, 1)
 
     k = np.int32(2)
-    #scatter_lists = np.zeros(k * thread_count, dtype=np.int32)
-    scatter_lists = np.concatenate([(i, i + 1) for i in range(data_count)]).astype(np.int32)
-    scatter_lists[-1] -= 1
+    scatter_lists = np.concatenate([(i, data_count - 1 - i) for i in range(data_count)]).astype(np.int32)
+    scatter_lists[-1] = -1
+    scatter_lists[0] = -1
     print len(scatter_lists), scatter_lists
-    scatter_count = np.int32(thread_count)
+    scatter_count = np.int32(scatter_lists.size // k)
 
-    test(data_count, k, cuda.InOut(data), scatter_count, cuda.InOut(scatter_lists),
-            block=block, grid=grid)
+    test(k, data_count, cuda.InOut(data), scatter_count, cuda.InOut(scatter_lists),
+            block=block, grid=grid, shared=int(scatter_count * k))
 
     return data
