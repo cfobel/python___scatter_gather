@@ -29,7 +29,7 @@ namespace scatter_gather {
     }
 
 
-    template <class T, int _empty_index=-1>
+    template <class T>
     class ScatterManager {
     public:
         int _data_count;
@@ -49,9 +49,10 @@ namespace scatter_gather {
                 data_count), _data(data), _empty_value(0) {}
 
         /*
-        * Interpret entry `e` in scatter_lists[] with the value `_empty_index`
-        * as an indication that the corresponding entry in the `block_data` array
-        * should be set to the value `_empty_value`.
+        * Interpret entry `e` in scatter_lists[] where `empty_index()`
+        * evaluates to `false` as an indication that the corresponding
+        * entry in the `block_data` array should be set to the value
+        * `_empty_value`.
         *
         * e.g., Consider the following:
         *
@@ -60,11 +61,12 @@ namespace scatter_gather {
         *         scatter_lists = [[4, -1], [3, 7], [-1, 2]]
         *         scatter_count = 3
         *
-        *     Note that some of the entries in `scatter_lists` have a value of -1.
-        *     This is the default `_empty_index` value.  Therefore, in the
-        *     `block_data` array, any entries corresponding to these -1 indices
-        *     should be set to `_empty_value` (in this case `_empty_value` is zero).
-        *     The resulting `block_data` array is then:
+        *     Note that some of the entries in `scatter_lists` have a
+        *     value of -1.  This causes `empty_index()` to return
+        *     `false` by default.  Therefore, in the `block_data` array,
+        *     any entries corresponding to these -1 indices should be
+        *     set to `_empty_value` (in this case `_empty_value` is
+        *     zero).  The resulting `block_data` array is then:
         *
         *         block_data = [7, 0, 8, 4, 0, 9]
         */
@@ -82,7 +84,7 @@ namespace scatter_gather {
                 if(scatter_list_index < scatter_count) {
                     for(int scatter_index = 0; scatter_index < k; scatter_index++) {
                         int index = scatter_lists[scatter_list_index * k + scatter_index];
-                        if(index == _empty_index) {
+                        if(empty_index(index)) {
                             block_data[block_data_base_index + scatter_index] = _empty_value;
                         } else {
                             T value = _data[index];
@@ -120,6 +122,10 @@ namespace scatter_gather {
          */
         __device__ int local_scatter_list_index(int pass_index) {
             return local_block_data_base_index(pass_index);
+        }
+
+        __device__ bool empty_index(int data_index) {
+            return data_index < 0;
         }
     };
 
