@@ -33,12 +33,13 @@ namespace scatter_gather {
     class ScatterManager {
     public:
         int _data_count;
+        int _scatter_count;
         volatile T *_data;
         T _empty_value;
 
         __device__ ScatterManager(int data_count, volatile T *data, T empty_value)
-                : _data_count(data_count), _data(data), _empty_value(empty_value) {
-        }
+                : _data_count(data_count), _scatter_count(0), _data(data),
+                        _empty_value(empty_value) {}
 
         /*
         * Overload `_empty_value` to zero.  Note that this will cause a
@@ -46,7 +47,7 @@ namespace scatter_gather {
         * `T`.
         */
         __device__ ScatterManager(int data_count, volatile T *data) : _data_count(
-                data_count), _data(data), _empty_value(0) {}
+                data_count), _scatter_count(0), _data(data), _empty_value(0) {}
 
         /*
         * Interpret entry `e` in scatter_lists[] where `empty_index()`
@@ -77,11 +78,14 @@ namespace scatter_gather {
                 printf("k_scatter(k=%d, scatter_count=%d)\n", k, scatter_count);
             }
 #endif
-            int passes = ceil((float)scatter_count / blockDim.x);
+            _scatter_count = scatter_count;
+            int passes = ceil((float)_scatter_count / blockDim.x);
             for(int j = 0; j < passes; j++) {
-                int scatter_list_index = local_scatter_list_index(j);
-                int block_data_base_index = local_block_data_base_index(j) * k;
-                if(scatter_list_index < scatter_count) {
+                bool thread_active;
+                int scatter_list_index = local_scatter_list_index(j,
+                        thread_active);
+                if(thread_active) {
+                    int block_data_base_index = local_block_data_base_index(j) * k;
                     for(int scatter_index = 0; scatter_index < k; scatter_index++) {
                         int index = scatter_lists[scatter_list_index * k + scatter_index];
                         if(empty_index(index)) {
@@ -111,7 +115,7 @@ namespace scatter_gather {
             syncthreads();
         }
 
-        __device__ int local_block_data_base_index(int pass_index) {
+        __device__ virtual int local_block_data_base_index(int pass_index) {
             return pass_index * blockDim.x + threadIdx.x;
         }
 
@@ -120,12 +124,52 @@ namespace scatter_gather {
          * `scatter_lists` index corresponding to the scatter list array to be
          * processed by the current CUDA thread.
          */
-        __device__ int local_scatter_list_index(int pass_index) {
-            return local_block_data_base_index(pass_index);
+        __device__ virtual int local_scatter_list_index(int pass_index,
+                bool &thread_active) {
+            int result = local_block_data_base_index(pass_index);
+            thread_active = (result < this->_scatter_count);
+            return result;
         }
 
-        __device__ bool empty_index(int data_index) {
+        __device__ virtual bool empty_index(int data_index) {
             return data_index < 0;
+        }
+    };
+
+
+    template <class T>
+    class IndirectScatterManager : public ScatterManager<T> {
+    public:
+        uint32_t *_scatter_list_order;
+
+        __device__ IndirectScatterManager(int data_count, volatile T *data, T empty_value)
+                : ScatterManager<T>(data_count, data, empty_value), _scatter_list_order(NULL) {}
+
+        /*
+        * Overload `_empty_value` to zero.  Note that this will cause a
+        * compilation error if 0 cannot be implicitly casted to type
+        * `T`.
+        */
+        __device__ IndirectScatterManager(int data_count, volatile T *data)
+                : ScatterManager<T>(data_count, data), _scatter_list_order(NULL) {}
+
+        __device__ void scatter(int k, int scatter_count,
+                int32_t *scatter_lists, uint32_t *scatter_list_order,
+                        volatile T *block_data) {
+            _scatter_list_order = scatter_list_order;
+            this->_scatter_count = scatter_count;
+            ScatterManager<T>::scatter(k, this->_scatter_count, scatter_lists,
+                    block_data);
+        }
+
+        __device__ virtual int local_scatter_list_index(int pass_index,
+                bool &thread_active) {
+            int result = ScatterManager<T>::local_scatter_list_index(
+                    pass_index, thread_active);
+            if(thread_active) {
+                result = _scatter_list_order[result];
+            }
+            return result;
         }
     };
 

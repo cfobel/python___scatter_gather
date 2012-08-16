@@ -38,7 +38,8 @@ def log2ceil(x):
     return int(np.ceil(np.log2(x)))
 
 
-def scatter_gather(in_data, scatter_lists, dtype=None, thread_count=None):
+def scatter_gather(in_data, scatter_lists, scatter_list_order=None, dtype=None,
+        thread_count=None):
     code_template = jinja_env.get_template('scatter_gather.cu')
     mod = SourceModule(code_template.render(), no_extern_c=True,
             options=['-I%s' % get_include_root()], keep=True)
@@ -59,16 +60,12 @@ def scatter_gather(in_data, scatter_lists, dtype=None, thread_count=None):
     data = np.array(in_data, dtype=dtype)
     data_count = np.int32(len(data))
 
-    #shared = data_count * dtype.itemsize
-    #shared = 0
-
     default_thread_count = log2ceil(test.get_attribute(
             cuda.function_attribute.MAX_THREADS_PER_BLOCK))
 
     if thread_count is None:
         thread_count = min(data_count, 1 << default_thread_count)
 
-    #block_count = max(1, log2ceil(data_count / thread_count))
     block_count = 1
     print 'thread_count: %d' % thread_count
     print 'block_count: %d' % block_count
@@ -81,8 +78,11 @@ def scatter_gather(in_data, scatter_lists, dtype=None, thread_count=None):
     scatter_lists = np.concatenate(scatter_lists).astype(np.int32)
     gathered_data = np.empty_like(scatter_lists).astype(dtype)
 
-    test(k, data_count, cuda.InOut(data), scatter_count, cuda.InOut(scatter_lists),
-            cuda.Out(gathered_data),
+    if scatter_list_order is None:
+        scatter_list_order = np.arange(len(scatter_lists), dtype=np.uint32)
+
+    test(k, data_count, cuda.InOut(data), scatter_count, cuda.In(scatter_lists),
+            cuda.In(scatter_list_order), cuda.Out(gathered_data),
             block=block, grid=grid, shared=int(scatter_count * k))
 
     return gathered_data
