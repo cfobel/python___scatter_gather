@@ -2,38 +2,42 @@ from __future__ import division
 
 import numpy as np
 
+class ScatterManager(object):
+    def __init__(self, data, empty_value=0):
+        self.data = data
+        self.empty_value = empty_value
 
-def k_scatter(data, scatter_lists):
-    '''
-    Given a 1D array of values, which we'll call "data", and an ordered set
-    of k-sized arrays (which we'll call "scatter_lists") of indices into
-    "data", generate an ordered set of arrays, where each array corresponds
-    to the "data" values for a particular list of indices from
-    "scatter_lists".
+    def empty_index(self, index):
+        return index < 0
 
-    For example (note that here k=2, i.e., the scatter lists are of size 2):
+    def k_scatter(self, scatter_lists):
+        '''
+        Given a 1D array of values, which we'll call "data", and an ordered set
+        of k-sized arrays (which we'll call "scatter_lists") of indices into
+        "data", generate an ordered set of arrays, where each array corresponds
+        to the "data" values for a particular list of indices from
+        "scatter_lists".
 
-    >>> data = [1, 3, 0, 2, 5, 4]
-    >>> scatter_lists = [[0, 3], [1, 4], [0, 5]]
-    >>> scattered_data = k_scatter(data, scatter_lists)
-    >>> scattered_data
-    [[1, 2], [3, 5], [1, 4]]
-    '''
-    stride = len(scatter_lists[0])
-    for i, d in enumerate(scatter_lists[1:]):
-        assert(len(d) == stride)
-    np_data = np.array(data)
-    def get_data(data_array, index):
-        if index < 0:
-            return 0
+        For example (note that here k=2, i.e., the scatter lists are of size 2):
+
+        >>> data = [1, 3, 0, 2, 5, 4]
+        >>> scatter_lists = [[0, 3], [1, 4], [0, 5]]
+        >>> scatter_manager = ScatterManager(data)
+        >>> scattered_data = scatter_manager.k_scatter(scatter_lists)
+        >>> scattered_data
+        [[1, 2], [3, 5], [1, 4]]
+        '''
+        stride = len(scatter_lists[0])
+        for i, d in enumerate(scatter_lists[1:]):
+            assert(len(d) == stride)
+        np_data = np.array(self.data)
+        scattered_data = [[self.empty_value
+                if self.empty_index(i) else self.data[i] for i in scatter_list]
+                        for scatter_list in scatter_lists]
+        if isinstance(self.data, np.ndarray):
+            return scattered_data
         else:
-            return data_array[index]
-    scattered_data = [[get_data(data, i) for i in scatter_list]
-            for scatter_list in scatter_lists]
-    if isinstance(data, np.ndarray):
-        return scattered_data
-    else:
-        return [list(d) for d in scattered_data]
+            return [list(d) for d in scattered_data]
 
 
 def k_gather(scattered_data):

@@ -2,7 +2,7 @@ from __future__ import division
 
 import numpy as np
 
-from ..scatter_gather import k_scatter, k_gather
+from ..scatter_gather import ScatterManager, k_gather
 from ..scatter_gather.cuda import scatter_gather
 
 
@@ -14,7 +14,8 @@ def test_k_scatter_gather():
     scatter_lists = [[list(a2).index(i)
             for i in a1[j * stride:(j + 1) * stride]]
                     for j in range(int(np.ceil(a1.size / stride)))]
-    scattered_data = k_scatter(a2, scatter_lists)
+    scatter_manager = ScatterManager(a2)
+    scattered_data = scatter_manager.k_scatter(scatter_lists)
     gathered_data = k_gather(scattered_data)
     
     assert((gathered_data == a1).all())
@@ -32,7 +33,8 @@ def test_k_scatter_cuda():
     scatter_lists[0][-1] = -2
     scatter_lists[-1][-1] = -2
 
-    gathered_data_cpu = k_gather(k_scatter(data, scatter_lists))
+    scatter_manager = ScatterManager(data)
+    gathered_data_cpu = k_gather(scatter_manager.k_scatter(scatter_lists))
     print gathered_data_cpu
 
     gathered_data_cuda = scatter_gather(data, scatter_lists, thread_count=1)

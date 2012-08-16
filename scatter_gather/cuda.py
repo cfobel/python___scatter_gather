@@ -7,8 +7,6 @@ import pycuda.autoinit
 import pycuda.driver as cuda
 from pycuda.compiler import SourceModule
 
-from scatter_gather import k_scatter, k_gather
-
 
 def package_root():
     '''
