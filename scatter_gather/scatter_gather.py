@@ -23,7 +23,13 @@ def k_scatter(data, scatter_lists):
     for i, d in enumerate(scatter_lists[1:]):
         assert(len(d) == stride)
     np_data = np.array(data)
-    scattered_data = [np_data[scatter_list] for scatter_list in scatter_lists]
+    def get_data(data_array, index):
+        if index < 0:
+            return 0
+        else:
+            return data_array[index]
+    scattered_data = [[get_data(data, i) for i in scatter_list]
+            for scatter_list in scatter_lists]
     if isinstance(data, np.ndarray):
         return scattered_data
     else:

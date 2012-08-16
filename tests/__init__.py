@@ -23,13 +23,19 @@ def test_k_scatter_gather():
 def test_k_scatter_cuda():
     data = np.arange(12, dtype=np.int32)[::-1].copy()
     data_count = np.int32(len(data))
-    scatter_lists = [[i, data_count - 1 - i] for i in range(data_count)]
-    scatter_lists[0][0] = -1
-    scatter_lists[-1][0] = -1
-
-    gathered_data_cuda = scatter_gather(data, scatter_lists, thread_count=1)
+    #scatter_lists = [[i, i, data_count - 1 - i] for i in range(data_count)]
+    #scatter_lists[0][-1] = -1
+    #scatter_lists[-1][-1] = -1
+    rng = np.random.RandomState()
+    rng.seed(0)
+    scatter_lists = [rng.randint(data_count, size=3) for i in range(4)]
+    scatter_lists[0][-1] = -2
+    scatter_lists[-1][-1] = -2
 
     gathered_data_cpu = k_gather(k_scatter(data, scatter_lists))
+    print gathered_data_cpu
+
+    gathered_data_cuda = scatter_gather(data, scatter_lists, thread_count=1)
 
     to_print = (('data', data), ('scatter_lists', scatter_lists),
             ('gathered_data (CPU)', gathered_data_cpu),
