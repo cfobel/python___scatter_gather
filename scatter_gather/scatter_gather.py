@@ -44,6 +44,41 @@ class ScatterManager(object):
             return [list(d) for d in scattered_data]
 
 
+class IndirectScatterManager(ScatterManager):
+    '''
+    Here, we extend `ScatterManager` to allow the `scatter_lists` to be
+    processed in a custom order (instead of in a linear sequence).
+
+    For example, consider the following example.
+
+    >>> data = [1, 3, 0, 2, 5, 4]
+    >>> scatter_lists = [[0, 3], [1, 4], [0, 5]]
+    >>> scatter_manager = IndirectScatterManager(data)
+
+    Notice that here we pass a custom order (i.e., [1, 2, 0]) to the
+    `k_scatter()` method.  This specifies the order in which the scatter
+    lists should be processed, and, thus, determines the position that
+    the list of `data` values corresponding to the scatter list should
+    be written to in the scattered data.  In this case, the zero-th
+    scatter list is processed/stored last, as shown below.
+
+    >>> scatter_manager.k_scatter(scatter_lists, [1, 2, 0])
+    [[3, 5], [1, 4], [1, 2]]
+    '''
+
+    def k_scatter(self, scatter_lists, scatter_index_map=None):
+        if scatter_index_map is None:
+            self._scatter_index_map = range(len(scatter_lists))
+        else:
+            self._scatter_index_map = scatter_index_map
+        result = super(IndirectScatterManager, self).k_scatter(scatter_lists)
+        del self._scatter_index_map
+        return result
+
+    def scatter_list_index(self, i):
+        return self._scatter_index_map[i]
+
+
 def k_gather(scattered_data):
     '''
     Given a list of k-sized arrays (potentially the output of k-scatter),
