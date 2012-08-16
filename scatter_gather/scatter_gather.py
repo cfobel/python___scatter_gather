@@ -10,6 +10,9 @@ class ScatterManager(object):
     def empty_index(self, index):
         return index < 0
 
+    def scatter_list_index(self, i):
+        return i
+
     def k_scatter(self, scatter_lists):
         '''
         Given a 1D array of values, which we'll call "data", and an ordered set
@@ -32,8 +35,9 @@ class ScatterManager(object):
             assert(len(d) == stride)
         np_data = np.array(self.data)
         scattered_data = [[self.empty_value
-                if self.empty_index(i) else self.data[i] for i in scatter_list]
-                        for scatter_list in scatter_lists]
+                if self.empty_index(index) else self.data[index]
+                        for index in scatter_lists[self.scatter_list_index(i)]]
+                                for i in range(len(scatter_lists))]
         if isinstance(self.data, np.ndarray):
             return scattered_data
         else:
