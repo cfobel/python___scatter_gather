@@ -27,7 +27,7 @@ def test_k_scatter_cuda():
     scatter_lists[0][0] = -1
     scatter_lists[-1][0] = -1
 
-    gathered_data_cuda = scatter_gather(data, scatter_lists, thread_count=16)
+    gathered_data_cuda = scatter_gather(data, scatter_lists, thread_count=1)
 
     gathered_data_cpu = k_gather(k_scatter(data, scatter_lists))
 

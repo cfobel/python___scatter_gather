@@ -1,7 +1,6 @@
 #ifndef ___SCATTER_GATHER__HPP___
 #define ___SCATTER_GATHER__HPP___
 
-
 namespace scatter_gather {
     #include <stdio.h>
     #include <stdint.h>
@@ -78,19 +77,27 @@ namespace scatter_gather {
 #endif
             int passes = ceil((float)scatter_count / blockDim.x);
             for(int j = 0; j < passes; j++) {
-                int i = j * blockDim.x + threadIdx.x;
-                if(i < scatter_count) {
+                int scatter_list_index = local_scatter_list_index(j);
+                int block_data_base_index = local_block_data_base_index(j) * k;
+                if(scatter_list_index < scatter_count) {
                     for(int scatter_index = 0; scatter_index < k; scatter_index++) {
-                        int index = scatter_lists[i * k + scatter_index];
+                        int index = scatter_lists[scatter_list_index * k + scatter_index];
                         if(index == _empty_index) {
-                            block_data[threadIdx.x * k + scatter_index] = _empty_value;
+                            block_data[block_data_base_index + scatter_index] = _empty_value;
                         } else {
                             T value = _data[index];
-                            block_data[threadIdx.x * k + scatter_index] = value;
+                            block_data[block_data_base_index + scatter_index] = value;
 
 #ifdef DEBUG_SCATTER_GATHER
-                            printf("{'block_id': %d, 'thread_id': %d, 'pass': %d, 'element_id': %d, 'value': %d}\n",
-                                    blockIdx.x, threadIdx.x, j, i, value);
+                            printf("{'block_id': %2d, 'thread_id': %2d, "
+                                    "'pass': %2d, 'scatter_list_index': %2d, "
+                                    "'block_data_base_index': %2d, "
+                                    "'block_data_index': %2d, "
+                                    "'value': %2d, 'data_index': %2d}\n",
+                                            blockIdx.x, threadIdx.x,
+                                            j, scatter_list_index, block_data_base_index,
+                                            block_data_base_index + scatter_index,
+                                            value, index);
                             if(index >= _data_count) {
                                 printf("Out of bounds: %d/%d\n", index, _data_count);
                             }
@@ -99,6 +106,20 @@ namespace scatter_gather {
                     }
                 }
             }
+            syncthreads();
+        }
+
+        __device__ int local_block_data_base_index(int pass_index) {
+            return pass_index * blockDim.x + threadIdx.x;
+        }
+
+        /*
+         * Given the index of the current pass of execution, return the
+         * `scatter_lists` index corresponding to the scatter list array to be
+         * processed by the current CUDA thread.
+         */
+        __device__ int local_scatter_list_index(int pass_index) {
+            return local_block_data_base_index(pass_index);
         }
     };
 
@@ -116,7 +137,7 @@ namespace scatter_gather {
             int i = j * blockDim.x + threadIdx.x;
             if(i < scatter_count) {
                 for(int scatter_index = 0; scatter_index < k; scatter_index++) {
-                    T value = block_data[threadIdx.x * k + scatter_index];
+                    T value = block_data[i * k + scatter_index];
                     gathered_data[i * k + scatter_index] = value;
                 }
             }

@@ -70,7 +70,8 @@ def scatter_gather(in_data, scatter_lists, dtype=None, thread_count=None):
     if thread_count is None:
         thread_count = min(data_count, 1 << default_thread_count)
 
-    block_count = max(1, log2ceil(data_count / thread_count))
+    #block_count = max(1, log2ceil(data_count / thread_count))
+    block_count = 1
     print 'thread_count: %d' % thread_count
     print 'block_count: %d' % block_count
     
