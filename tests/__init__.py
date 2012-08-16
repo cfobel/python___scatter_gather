@@ -40,4 +40,4 @@ def test_k_scatter_cuda():
     for label, data_ in to_print:
         print format_str % label, data_
 
-    assert(gathered_data_cpu, gathered_data_cuda)
+    assert((gathered_data_cpu == gathered_data_cuda).all())
