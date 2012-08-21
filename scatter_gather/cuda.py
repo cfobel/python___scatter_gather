@@ -39,7 +39,7 @@ def log2ceil(x):
 
 
 def scatter_gather(in_data, scatter_lists, scatter_list_order=None, dtype=None,
-        thread_count=None):
+        thread_count=None, block_count=None):
     code_template = jinja_env.get_template('scatter_gather.cu')
     mod = SourceModule(code_template.render(), no_extern_c=True,
             options=['-I%s' % get_include_root()], keep=True)
@@ -59,30 +59,32 @@ def scatter_gather(in_data, scatter_lists, scatter_list_order=None, dtype=None,
 
     data = np.array(in_data, dtype=dtype)
     data_count = np.int32(len(data))
-
-    default_thread_count = log2ceil(test.get_attribute(
-            cuda.function_attribute.MAX_THREADS_PER_BLOCK))
-
-    if thread_count is None:
-        thread_count = min(data_count, 1 << default_thread_count)
-
-    block_count = 1
-    print 'thread_count: %d' % thread_count
-    print 'block_count: %d' % block_count
-    
-    block = (thread_count, 1, 1)
-    grid = (block_count, 1, 1)
-
     k = np.int32(len(scatter_lists[0]))
     scatter_count = np.int32(len(scatter_lists))
     scatter_lists = np.concatenate(scatter_lists).astype(np.int32)
     gathered_data = np.empty_like(scatter_lists).astype(dtype)
+
+    default_thread_count = 1 << log2ceil(test.get_attribute(
+            cuda.function_attribute.MAX_THREADS_PER_BLOCK))
+
+    if thread_count is None:
+        thread_count = int(min(scatter_count, default_thread_count))
+    if block_count is None:
+        block_count = int(np.ceil(scatter_count / thread_count))
+
+    block = (thread_count, 1, 1)
+    grid = (block_count, 1, 1)
+    shared = int(scatter_count * k) * dtype.type(0).itemsize
+
+    print 'thread_count: %d' % thread_count
+    print 'block_count: %d' % block_count
+    
 
     if scatter_list_order is None:
         scatter_list_order = np.arange(len(scatter_lists), dtype=np.uint32)
 
     test(k, data_count, cuda.InOut(data), scatter_count, cuda.In(scatter_lists),
             cuda.In(scatter_list_order), cuda.Out(gathered_data),
-            block=block, grid=grid, shared=int(scatter_count * k))
+            block=block, grid=grid, shared=shared)
 
     return gathered_data
