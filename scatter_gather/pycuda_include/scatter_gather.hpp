@@ -215,15 +215,6 @@ namespace scatter_gather {
     __device__ void k_scatter_global(int k, int data_count,
             T *data, int scatter_count, int32_t *scatter_lists,
             uint32_t *scatter_list_order, T *shared_data, T *gathered_data) {
-        #if 0
-        T *sh_data = (T *)&shared_data[0];
-
-        for(int i = threadIdx.x; i < data_count; i += blockDim.x) {
-            if(i < data_count) {
-                sh_data[i] = data[i];
-            }
-        }
-        #endif
         T *block_data = (T *)&shared_data[0];
 
         /* Calculate the number of scatter lists the current thread block
@@ -256,7 +247,6 @@ namespace scatter_gather {
         }
         
 #ifdef DEBUG_SCATTER_GATHER
-        //if(blockIdx.x == gridDim.x - 1) {
         if(true) {
             printf("{'block_id': %d, 'thread_id': %d, 'global_index': %d, 'common_scatter_count': %d, "
                     "'odd_scatter_count': %d, 'local_scatter_count': %d, 'gathered_index': %d}\n",
@@ -269,17 +259,8 @@ namespace scatter_gather {
         scatter_gather::IndirectScatterManager<T> scatter_manager(data_count, data);
         scatter_manager.scatter(k, local_scatter_count, scatter_lists,
                 local_scatter_list_order, &block_data[0]);
-        //if(blockIdx.x == 0) scatter_gather::dump_data(local_scatter_count * k, &block_data[0]);
         scatter_gather::k_gather<T>(k, local_scatter_count, &block_data[0],
                 local_gathered_data);
-
-        #if 0
-        for(int i = threadIdx.x; i < data_count; i += blockDim.x) {
-            if(i < data_count) {
-                data[i] = sh_data[i];
-            }
-        }
-        #endif
     }
 }
 
