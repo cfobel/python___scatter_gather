@@ -53,13 +53,14 @@ def test_k_scatter_gather():
 
 
 def test_k_scatter_cuda():
-    data = np.arange(29, dtype=np.int32)[::-1].copy()
+    data = np.arange(400, dtype=np.int32)[::-1].copy()
     data_count = np.int32(len(data))
     rng = np.random.RandomState()
     rng.seed(0)
-    for two_power in range(13):
+    for two_power in range(15):
         scatter_list_count = 1 << two_power
-        scatter_lists = [rng.randint(data_count, size=3) for i in range(scatter_list_count)]
+        scatter_lists = [rng.randint(data_count, size=3)
+                for i in range(scatter_list_count)]
         scatter_lists[0][-1] = -2
         scatter_lists[-1][-1] = -2
 
@@ -69,21 +70,7 @@ def test_k_scatter_cuda():
         gathered_data_cpu = k_gather(scatter_manager.k_scatter(scatter_lists,
                 scatter_list_order))
 
-        gathered_data_cuda = scatter_gather(data, scatter_lists, scatter_list_order)
-                #block_count=?, thread_count=256)
+        gathered_data_cuda = scatter_gather(data, scatter_lists,
+                scatter_list_order)
 
-        to_print = (('data_id', np.arange(len(data))),
-                ('data', data), ('scatter_lists', scatter_lists),
-                ('scatter_list_order', scatter_list_order),
-                ('gathered_data (CPU)', gathered_data_cpu),
-                ('gathered_data (CUDA)', gathered_data_cuda))
-        max_label_length = max(len(label) for label, d in to_print)
-        format_str = '%%%ds' % (max_label_length + 1)
-
-        #for label, data_ in to_print:
-            #print format_str % label, data_
-
-        #try:
         all_close(gathered_data_cpu, gathered_data_cuda, ['CPU', 'CUDA'])
-        #except:
-            #import pudb; pudb.set_trace()

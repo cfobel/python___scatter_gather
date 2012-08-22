@@ -74,11 +74,22 @@ def scatter_gather(in_data, scatter_lists, scatter_list_order=None, dtype=None,
 
     block = (thread_count, 1, 1)
     grid = (block_count, 1, 1)
-    shared = int(scatter_count * k) * dtype.type(0).itemsize
+
+    # The number of scatter lists to be processed by all thread blocks
+    # (except the first, in the case where scatter_count does not divide
+    # evenly by block_count)
+    common_scatter_count = scatter_count // block_count
+
+    # If scatter_count does not divide evenly by block_count, compute
+    # how many extra elements must be processed by the first thread block
+    odd_scatter_count = scatter_count % block_count
+
+    shared = int(np.ceil((common_scatter_count + odd_scatter_count) * k)
+            ) * dtype.type(0).itemsize
 
     print 'thread_count: %d' % thread_count
     print 'block_count: %d' % block_count
-    
+    print 'shared mem/block: %d' % shared
 
     if scatter_list_order is None:
         scatter_list_order = np.arange(len(scatter_lists), dtype=np.uint32)

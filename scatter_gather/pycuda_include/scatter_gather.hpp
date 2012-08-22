@@ -237,10 +237,11 @@ namespace scatter_gather {
         */
         int odd_scatter_count = scatter_count % gridDim.x;
 
-        /* Look up the starting address of scatter list orders for current
-        * thread block. */
+        /* Compute the starting address of scatter list orders for
+         * current thread block.  Note that the first block
+         */
         int global_index = blockIdx.x * common_scatter_count
-                + (blockIdx.x & 0xffff) * odd_scatter_count;
+                + odd_scatter_count;
 
         uint32_t *local_scatter_list_order = &scatter_list_order[global_index];
         int gathered_index = global_index * k;
