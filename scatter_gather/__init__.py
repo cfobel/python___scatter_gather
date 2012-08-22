@@ -1,1 +1,1 @@
-from .scatter_gather import k_scatter, k_gather
+from .scatter_gather import ScatterManager, IndirectScatterManager, k_gather
